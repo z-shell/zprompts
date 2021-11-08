@@ -1,0 +1,104 @@
+# Created by Sebastian Gniazdowski
+
+prompt_scala3_help () {
+    cat <<EOF
+This prompt is themable. You can invoke it in following way:
+
+prompt scala3 <prompt, default is ":: "> <prompt color> <path color> <vcs info color>
+
+You can provide only N first arguments, N=1..4.
+
+The default invocation is: ":: " cyan cyan magenta
+EOF
+}
+
+prompt_scala3_setup () {
+    local prompt_left=${1:-':: '}
+    local col_left=${2:-'cyan'}
+    local col_path=${3:-'cyan'}
+    local col_vcs=${4:-'magenta'}
+
+    zmodload -F zsh/stat b:zstat
+    autoload -Uz vcs_info
+    typeset -gA _psvar
+    _psvar[col_vcs]="$col_vcs"
+
+    local cl_left="%B%F{$col_left}"
+    local cl_path="%b%F{$col_path}"
+    local cl_vcs="%B%F{$col_vcs}"
+    local cl_rst="%b%f"
+
+    local _left="$cl_left$prompt_left"
+    local _path="$cl_path%28<*<%/%<<"
+    local _vcs="$cl_vcs"'${vcs_info_msg_0_}'
+    PS1="$_left$cl_rst"
+    PS2="$cl_left> $cl_rst"
+    RPS1="$_path$_vcs$cl_rst"
+    prompt_opts=(cr subst percent)
+
+    zstyle ':vcs_info:*' enable git svn darcs bzr hg
+    zstyle ':vcs_info:*' stagedstr "%F{green}●$cl_vcs"
+    zstyle ':vcs_info:*' unstagedstr "%F{yellow}●$cl_vcs"
+    zstyle ':vcs_info:*' check-for-changes true
+    zstyle ':vcs_info:*' formats '(%s)-[%b%u%c]-'
+
+    add-zsh-hook precmd prompt_scala3_precmd
+}
+
+prompt_scala3_precmd () {
+    setopt noxtrace noksharrays localoptions
+
+    local -a changed_files
+    local day_info=""
+    changed_files=( )
+    git diff --quiet 2>/dev/null || changed_files=( ${(f)"$( git diff --name-only 2>/dev/null )"} )
+    changed_files=( $^changed_files(N) )
+    if [[ "${#changed_files}" -gt 0 ]]; then
+        local basedir
+        basedir="$(git rev-parse --show-toplevel)/"
+        local -a stat_result
+        stat_result=( ${(f)"$( zstat "${basedir}${^changed_files[@]}" )"} )
+        stat_result=( "${(M)stat_result[@]:#mtime*}" )
+        stat_result=( "${stat_result[@]/mtime[^0-9]#/}" )
+
+        integer min_timestamp i
+        min_timestamp=stat_result[1]
+        for i in "${stat_result[@]}"; do
+            (( i < min_timestamp )) && min_timestamp=i
+        done
+
+        integer cur_timestamp=$( date +%s )
+        integer days=$(( (cur_timestamp-min_timestamp)/(24*60*60) ))
+        (( days > 0 )) && day_info="$days days"
+    fi
+
+    if [[ -z "$day_info" ]]; then
+        zstyle ':vcs_info:*' formats ' (%s)-[%b%u%c]'
+    else
+        zstyle ':vcs_info:*' formats ' (%s)-[%b%u%B%F{yellow}-'"$day_info"'-%c%F{'"${_psvar[col_vcs]}"'}]'
+    fi
+
+    vcs_info
+}
+
+prompt_scala3_preview () {
+    local -a colors_prompt
+    colors_prompt=(red yellow green blue magenta cyan)
+
+    local cprompt
+    integer i
+
+    if (( ! $#* )); then
+        for (( i = 1; i <= ${#colors_prompt}; i++ )); do
+            cprompt="${colors_prompt[$i]}"
+            prompt_preview_theme scala3 ":: " "$cprompt" "$cprompt"
+            (( i != ${#colors_prompt} )) && print
+        done
+    else
+        prompt_preview_theme scala3 "$@"
+    fi
+}
+
+prompt_scala3_setup "$@"
+
+# vim:ft=zsh

@@ -1,0 +1,71 @@
+# Created by Sebastian Gniazdowski
+
+prompt_scala_help () {
+    cat <<EOF
+This prompt is themable. You can invoke it in following way:
+
+prompt scala <prompt, default is ":: "> <prompt color> <path color> <vcs info color>
+
+You can provide only N first arguments, N=1..4.
+
+The default invocation is: ":: " cyan cyan magenta
+EOF
+}
+
+prompt_scala_setup () {
+    local prompt_left=${1:-':: '}
+    local col_left=${2:-'cyan'}
+    local col_path=${3:-'cyan'}
+    local col_vcs=${4:-'magenta'}
+
+    autoload -Uz vcs_info
+
+    local cl_left="%B%F{$col_left}"
+    local cl_path="%b%F{$col_path}"
+    local cl_vcs="%B%F{$col_vcs}"
+    local cl_rst="%b%f"
+
+    local _left="$cl_left$prompt_left"
+    local _path="$cl_path%28<*<%/%<<"
+    local _vcs="$cl_vcs"'${vcs_info_msg_0_}'
+    PS1="$_left$cl_rst"
+    PS2="$cl_left> $cl_rst"
+    RPS1="$_path$_vcs$cl_rst"
+    prompt_opts=(cr subst percent)
+
+    zstyle ':vcs_info:*' enable git svn darcs bzr hg
+    zstyle ':vcs_info:*' stagedstr "S"
+    zstyle ':vcs_info:*' unstagedstr "U"
+    zstyle ':vcs_info:*' check-for-changes false
+    zstyle ':vcs_info:*' formats " (%s)-[%b]%u%c-"
+
+    add-zsh-hook precmd prompt_scala_precmd
+}
+
+prompt_scala_precmd () {
+  setopt localoptions noxtrace noksharrays
+
+  vcs_info
+}
+
+prompt_scala_preview () {
+    local -a colors_prompt
+    colors_prompt=(red yellow green blue magenta cyan)
+
+    local cprompt
+    integer i
+
+    if (( ! $#* )); then
+        for (( i = 1; i <= ${#colors_prompt}; i++ )); do
+            cprompt="${colors_prompt[$i]}"
+            prompt_preview_theme scala ":: " "$cprompt" "$cprompt"
+            (( i != ${#colors_prompt} )) && print
+        done
+    else
+        prompt_preview_theme scala "$@"
+    fi
+}
+
+prompt_scala_setup "$@"
+
+# vim:ft=zsh
