@@ -38,4 +38,4 @@ The default invocation is: ":: " cyan cyan magenta
 
 Video showing a feature – information about how old are repository's unstaged changes
 
-[![asciicast](https://asciinema.org/a/48122.png)](https://asciinema.org/a/48122)
+<a href="https://asciinema.org/a/48122" target="_blank"><img src="https://asciinema.org/a/48122.svg" /></a>
